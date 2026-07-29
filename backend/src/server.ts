@@ -10,6 +10,7 @@ import equipmentRoutes from './routes/equipmentRoutes.js';
 import requestRoutes from './routes/requestRoutes.js';
 import logisticsRoutes from './routes/logisticsRoutes.js';
 import { initSocketIO } from './services/socketService.js';
+import warehouseRoutes from './routes/warehouseRoutes.js';
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/equipment', equipmentRoutes);
 app.use('/api/v1/requests', requestRoutes);
 app.use('/api/v1/logistics', logisticsRoutes);
+app.use('/api/v1/warehouses', warehouseRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', timestamp: new Date() });
