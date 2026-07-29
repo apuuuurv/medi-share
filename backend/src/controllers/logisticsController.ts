@@ -5,6 +5,7 @@ import { EquipmentModel } from '../models/Equipment.js';
 import { RequestModel } from '../models/Request.js';
 import { EquipmentStatus, RequestStatus } from '../constants/enums.js';
 import { sendSuccess, sendError } from '../utils/responseHandler.js';
+import { emitStatusUpdate } from '../services/socketService.js';
 
 // Helper to generate 6-digit OTP
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
@@ -59,6 +60,14 @@ export const acceptTask = async (req: AuthRequest, res: Response) => {
     task.status = TaskStatus.IN_PROGRESS;
     await task.save();
 
+    // ⚡ Real-Time Socket Emission
+    emitStatusUpdate(`task_${task._id}`, 'task_status_changed', {
+      taskId: task._id,
+      status: task.status,
+      volunteerId: task.volunteerId,
+      message: 'Volunteer accepted the task and is en route.',
+    });
+
     return sendSuccess(res, 200, 'Task accepted successfully', task);
   } catch (error) {
     return sendError(res, 500, 'Failed to accept task', error);
@@ -89,6 +98,14 @@ export const completeTaskWithOTP = async (req: AuthRequest, res: Response) => {
     } else {
       await EquipmentModel.findByIdAndUpdate(task.equipmentId, { status: EquipmentStatus.IN_INVENTORY });
     }
+
+    // ⚡ Real-Time Socket Emission
+    emitStatusUpdate(`task_${task._id}`, 'task_completed', {
+      taskId: task._id,
+      status: task.status,
+      completedAt: task.completedAt,
+      message: 'Handover verified successfully via OTP!',
+    });
 
     return sendSuccess(res, 200, 'Task completed and equipment handover verified via OTP!', task);
   } catch (error) {

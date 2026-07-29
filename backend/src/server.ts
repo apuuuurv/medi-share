@@ -9,11 +9,13 @@ import authRoutes from './routes/authRoutes.js';
 import equipmentRoutes from './routes/equipmentRoutes.js';
 import requestRoutes from './routes/requestRoutes.js';
 import logisticsRoutes from './routes/logisticsRoutes.js';
+import { initSocketIO } from './services/socketService.js';
 
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+initSocketIO(server);
 
 export const io = new SocketIOServer(server, {
   cors: {
@@ -47,6 +49,7 @@ const PORT = process.env.PORT || 5000;
 
 connectDB().then(() => {
   server.listen(PORT, () => {
-    console.log(`[Server Running]: http://localhost:${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`⚡ Socket.IO initialized on http://localhost:${PORT}`);
   });
 });
