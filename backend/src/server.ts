@@ -12,6 +12,8 @@ import logisticsRoutes from './routes/logisticsRoutes.js';
 import { initSocketIO } from './services/socketService.js';
 import warehouseRoutes from './routes/warehouseRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger.js';
 
 dotenv.config();
 
@@ -37,6 +39,7 @@ app.use('/api/v1/requests', requestRoutes);
 app.use('/api/v1/logistics', logisticsRoutes);
 app.use('/api/v1/warehouses', warehouseRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));4
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', timestamp: new Date() });
@@ -57,3 +60,5 @@ connectDB().then(() => {
     console.log(`⚡ Socket.IO initialized on http://localhost:${PORT}`);
   });
 });
+
+console.log('📖 Swagger Docs available at http://localhost:5000/api-docs');
