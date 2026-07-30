@@ -210,3 +210,39 @@ export const updateTaskStatus = async (req: AuthRequest, res: Response) => {
     return sendError(res, 500, 'Failed to update task status', error);
   }
 };
+
+// 8. Update Live Volunteer Location & Broadcast via Socket
+export const updateTaskLocation = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { longitude, latitude } = req.body;
+
+    if (longitude === undefined || latitude === undefined) {
+      return sendError(res, 400, 'Longitude and latitude are required');
+    }
+
+    const task = await LogisticsTaskModel.findById(id);
+    if (!task) return sendError(res, 404, 'Task not found');
+
+    // Update stored current location
+    task.currentLocation = {
+      type: 'Point',
+      coordinates: [Number(longitude), Number(latitude)],
+      updatedAt: new Date(),
+    };
+
+    await task.save();
+
+    // ⚡ Real-Time Socket Emission for live map tracking
+    emitStatusUpdate(`task_${task._id}`, 'location_updated', {
+      taskId: task._id,
+      volunteerId: task.volunteerId,
+      coordinates: [Number(longitude), Number(latitude)],
+      updatedAt: task.currentLocation.updatedAt,
+    });
+
+    return sendSuccess(res, 200, 'Live location updated successfully', task.currentLocation);
+  } catch (error) {
+    return sendError(res, 500, 'Failed to update location', error);
+  }
+};

@@ -6,7 +6,8 @@ import {
   completeTaskWithOTP,
   getMyTasks,
   getTaskById,
-  updateTaskStatus
+  updateTaskStatus,
+  updateTaskLocation
 } from '../controllers/logisticsController.js';
 import { authenticateJWT, authorizeRoles } from '../middlewares/authMiddleware.js';
 import { UserRole } from '../constants/enums.js';
@@ -33,5 +34,8 @@ router.patch('/:id/status', authenticateJWT, authorizeRoles(UserRole.VOLUNTEER, 
 
 // Complete Task with OTP (Volunteers)
 router.post('/:id/verify-otp', authenticateJWT, authorizeRoles(UserRole.VOLUNTEER, UserRole.SUPER_ADMIN), completeTaskWithOTP);
+
+// Live GPS Location Update (Volunteers)
+router.patch('/:id/location', authenticateJWT, authorizeRoles(UserRole.VOLUNTEER, UserRole.SUPER_ADMIN), updateTaskLocation);
 
 export default router;

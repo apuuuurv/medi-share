@@ -34,6 +34,11 @@ export interface ILogisticsTask extends Document {
     zipCode: string;
     location: { type: 'Point'; coordinates: [number, number] };
   };
+  currentLocation?: {
+    type: 'Point';
+    coordinates: [number, number];
+    updatedAt?: Date;
+  };
   handoverOtp: string; // 6-digit OTP for completion
   completedAt?: Date;
 }
@@ -59,6 +64,11 @@ const LogisticsTaskSchema = new Schema<ILogisticsTask>(
       zipCode: String,
       location: { type: { type: String, enum: ['Point'], default: 'Point' }, coordinates: [Number] },
     },
+    currentLocation: {
+      type: { type: String, enum: ['Point'], default: 'Point' },
+      coordinates: { type: [Number], default: [0, 0] },
+      updatedAt: Date,
+    },
     handoverOtp: { type: String, required: true },
     completedAt: Date,
   },
@@ -67,5 +77,6 @@ const LogisticsTaskSchema = new Schema<ILogisticsTask>(
 
 LogisticsTaskSchema.index({ 'pickupAddress.location': '2dsphere' });
 LogisticsTaskSchema.index({ 'dropoffAddress.location': '2dsphere' });
+LogisticsTaskSchema.index({ 'currentLocation': '2dsphere' });
 
 export const LogisticsTaskModel = model<ILogisticsTask>('LogisticsTask', LogisticsTaskSchema);
