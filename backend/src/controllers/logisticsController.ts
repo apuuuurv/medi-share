@@ -6,6 +6,8 @@ import { RequestModel } from '../models/Request.js';
 import { EquipmentStatus, RequestStatus } from '../constants/enums.js';
 import { sendSuccess, sendError } from '../utils/responseHandler.js';
 import { emitStatusUpdate } from '../services/socketService.js';
+import { sendOtpEmail, sendTaskAssignmentEmail } from '../services/emailService.js';
+import { UserModel } from '../models/User.js';
 
 // Helper to generate 6-digit OTP
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
@@ -13,7 +15,7 @@ const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString()
 // 1. Create Dispatch Task (Called by NGO or automated system)
 export const createLogisticsTask = async (req: AuthRequest, res: Response) => {
   try {
-    const { taskType, equipmentId, requestId, pickupAddress, dropoffAddress } = req.body;
+    const { taskType, equipmentId, requestId, pickupAddress, dropoffAddress, recipientEmail } = req.body;
     const handoverOtp = generateOTP();
 
     const task = await LogisticsTaskModel.create({
@@ -24,6 +26,13 @@ export const createLogisticsTask = async (req: AuthRequest, res: Response) => {
       dropoffAddress,
       handoverOtp,
     });
+
+    // 📧 Trigger OTP Email Notification asynchronously
+    if (recipientEmail) {
+      sendOtpEmail(recipientEmail, handoverOtp, taskType).catch((err) =>
+        console.error('Failed to trigger OTP email:', err)
+      );
+    }
 
     return sendSuccess(res, 201, 'Logistics task created successfully', { task, otpCode: handoverOtp });
   } catch (error) {
@@ -67,6 +76,17 @@ export const acceptTask = async (req: AuthRequest, res: Response) => {
       volunteerId: task.volunteerId,
       message: 'Volunteer accepted the task and is en route.',
     });
+
+    // 📧 Fetch volunteer email from MongoDB & Trigger Email Alert
+    const volunteer = await UserModel.findById(volunteerIdStr);
+    if (volunteer?.email) {
+      const pickupStr = task.pickupAddress?.street || 'Warehouse Location';
+      const dropoffStr = task.dropoffAddress?.street || 'Beneficiary Address';
+      
+      sendTaskAssignmentEmail(volunteer.email, task._id.toString(), pickupStr, dropoffStr).catch((err) =>
+        console.error('Failed to send task assignment email:', err)
+      );
+    }
 
     return sendSuccess(res, 200, 'Task accepted successfully', task);
   } catch (error) {
