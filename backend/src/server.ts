@@ -11,6 +11,7 @@ import requestRoutes from './routes/requestRoutes.js';
 import logisticsRoutes from './routes/logisticsRoutes.js';
 import { initSocketIO } from './services/socketService.js';
 import warehouseRoutes from './routes/warehouseRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
 
 dotenv.config();
 
@@ -35,6 +36,7 @@ app.use('/api/v1/equipment', equipmentRoutes);
 app.use('/api/v1/requests', requestRoutes);
 app.use('/api/v1/logistics', logisticsRoutes);
 app.use('/api/v1/warehouses', warehouseRoutes);
+app.use('/api/v1/analytics', analyticsRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', timestamp: new Date() });
