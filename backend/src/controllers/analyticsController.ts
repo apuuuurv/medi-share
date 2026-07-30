@@ -4,7 +4,8 @@ import { EquipmentModel } from '../models/Equipment.js';
 import { RequestModel } from '../models/Request.js';
 import { LogisticsTaskModel, TaskStatus } from '../models/LogisticsTask.js';
 import { WarehouseModel } from '../models/Warehouse.js';
-import { EquipmentStatus, RequestStatus } from '../constants/enums.js';
+import { UserModel } from '../models/User.js';
+import { EquipmentStatus, RequestStatus, UserRole } from '../constants/enums.js';
 import { sendSuccess, sendError } from '../utils/responseHandler.js';
 
 // Get high-level NGO Dashboard KPIs & Metrics
@@ -15,25 +16,35 @@ export const getDashboardOverview = async (req: AuthRequest, res: Response) => {
       totalEquipment,
       availableEquipment,
       issuedEquipment,
+      underMaintenanceEquipment,
       pendingRequests,
       fulfilledRequests,
       activeTasks,
       totalWarehouses,
+      totalVolunteers,
     ] = await Promise.all([
       EquipmentModel.countDocuments(),
-      EquipmentModel.countDocuments({ status: EquipmentStatus.AVAILABLE }),
+      // Checks both IN_INVENTORY and AVAILABLE to handle any status enum conventions
+      EquipmentModel.countDocuments({ 
+        status: { $in: [EquipmentStatus.IN_INVENTORY, EquipmentStatus.AVAILABLE] } 
+      }),
       EquipmentModel.countDocuments({ status: EquipmentStatus.ISSUED }),
+      EquipmentModel.countDocuments({ status: EquipmentStatus.UNDER_MAINTENANCE }),
       RequestModel.countDocuments({ status: RequestStatus.PENDING }),
       RequestModel.countDocuments({ status: RequestStatus.DELIVERED }),
-      LogisticsTaskModel.countDocuments({ status: TaskStatus.IN_PROGRESS }),
+      // Active tasks include both assigned and actively in-progress dispatches
+      LogisticsTaskModel.countDocuments({ 
+        status: { $in: [TaskStatus.ASSIGNED, TaskStatus.IN_PROGRESS] } 
+      }),
       WarehouseModel.countDocuments({ isActive: true }),
+      UserModel.countDocuments({ role: UserRole.VOLUNTEER }),
     ]);
 
     // Fetch top 5 urgent unassigned beneficiary requests
     const highPriorityRequests = await RequestModel.find({ status: RequestStatus.PENDING })
-      .sort({ urgencyScore: -1 })
+      .sort({ urgencyScore: -1, createdAt: 1 })
       .limit(5)
-      .populate('beneficiaryId', 'fullName email');
+      .populate('beneficiaryId', 'fullName email phone');
 
     // Aggregate equipment counts by category
     const categoryBreakdown = await EquipmentModel.aggregate([
@@ -46,12 +57,14 @@ export const getDashboardOverview = async (req: AuthRequest, res: Response) => {
         totalEquipment,
         availableEquipment,
         issuedEquipment,
+        underMaintenanceEquipment,
         pendingRequests,
         fulfilledRequests,
         activeTasks,
         totalWarehouses,
-        fulfillmentRatePercentage: totalEquipment > 0 
-          ? Number(((fulfilledRequests / (pendingRequests + fulfilledRequests || 1)) * 100).toFixed(2)) 
+        totalVolunteers,
+        fulfillmentRatePercentage: (pendingRequests + fulfilledRequests) > 0 
+          ? Number(((fulfilledRequests / (pendingRequests + fulfilledRequests)) * 100).toFixed(2)) 
           : 0,
       },
       categoryBreakdown,
