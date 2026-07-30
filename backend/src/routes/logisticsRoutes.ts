@@ -3,7 +3,10 @@ import {
   createLogisticsTask, 
   getAvailableTasks, 
   acceptTask, 
-  completeTaskWithOTP 
+  completeTaskWithOTP,
+  getMyTasks,
+  getTaskById,
+  updateTaskStatus
 } from '../controllers/logisticsController.js';
 import { authenticateJWT, authorizeRoles } from '../middlewares/authMiddleware.js';
 import { UserRole } from '../constants/enums.js';
@@ -16,8 +19,17 @@ router.post('/', authenticateJWT, authorizeRoles(UserRole.NGO_ADMIN, UserRole.SU
 // View Available Tasks (Volunteers & Admins)
 router.get('/available', authenticateJWT, authorizeRoles(UserRole.VOLUNTEER, UserRole.NGO_ADMIN, UserRole.SUPER_ADMIN), getAvailableTasks);
 
+// View Volunteer's Assigned Tasks (Volunteers & Admins)
+router.get('/my-tasks', authenticateJWT, authorizeRoles(UserRole.VOLUNTEER, UserRole.SUPER_ADMIN), getMyTasks);
+
+// Single Task Details (Volunteers & Admins)
+router.get('/:id', authenticateJWT, authorizeRoles(UserRole.VOLUNTEER, UserRole.NGO_ADMIN, UserRole.SUPER_ADMIN), getTaskById);
+
 // Accept Task (Volunteers)
 router.patch('/:id/accept', authenticateJWT, authorizeRoles(UserRole.VOLUNTEER, UserRole.SUPER_ADMIN), acceptTask);
+
+// Manual Task Status Update (Volunteers & Admins)
+router.patch('/:id/status', authenticateJWT, authorizeRoles(UserRole.VOLUNTEER, UserRole.NGO_ADMIN, UserRole.SUPER_ADMIN), updateTaskStatus);
 
 // Complete Task with OTP (Volunteers)
 router.post('/:id/verify-otp', authenticateJWT, authorizeRoles(UserRole.VOLUNTEER, UserRole.SUPER_ADMIN), completeTaskWithOTP);
