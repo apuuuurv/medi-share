@@ -11,9 +11,6 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
-  Building2,
-  Tag,
-  Activity,
   Plus,
 } from 'lucide-react';
 
@@ -34,11 +31,11 @@ export default function DonorDashboard() {
   // QR Tag Modal State
   const [selectedAsset, setSelectedAsset] = useState<any | null>(null);
 
-  // Form Data State
+  // Form Data State (Updated default condition to 'NEW')
   const [formData, setFormData] = useState({
     name: '',
     category: 'OXYGEN_CONCENTRATOR',
-    condition: 'LIKE_NEW',
+    condition: 'NEW',
     serialNumber: '',
     description: '',
     street: '',
@@ -110,7 +107,7 @@ export default function DonorDashboard() {
       setFormData({
         name: '',
         category: 'OXYGEN_CONCENTRATOR',
-        condition: 'LIKE_NEW',
+        condition: 'NEW',
         serialNumber: '',
         description: '',
         street: '',
@@ -317,7 +314,8 @@ export default function DonorDashboard() {
                     onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-teal-500"
                   >
-                    <option value="BRAND_NEW">Brand New</option>
+                    {/* Changed value="BRAND_NEW" to value="NEW" to match Mongoose schema enum */}
+                    <option value="NEW">Brand New / New</option>
                     <option value="LIKE_NEW">Like New</option>
                     <option value="GOOD">Good / Gently Used</option>
                     <option value="FAIR">Fair / Functional</option>
