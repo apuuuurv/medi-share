@@ -115,7 +115,8 @@ export const approveAndMatchRequest = async (req: AuthRequest, res: Response): P
 
     if (
       equipment.status !== EquipmentStatus.IN_INVENTORY && 
-      equipment.status !== EquipmentStatus.AVAILABLE
+      equipment.status !== EquipmentStatus.AVAILABLE &&
+      equipment.status !== EquipmentStatus.DONATION_SUBMITTED
     ) {
       return sendError(res, 400, `Equipment is not available for reservation (Current Status: ${equipment.status})`);
     }

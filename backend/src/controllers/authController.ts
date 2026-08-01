@@ -1,4 +1,6 @@
+﻿// authController.ts
 import { Request, Response } from 'express';
+import { AuthRequest } from '../middlewares/authMiddleware.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { UserModel } from '../models/User.js';
@@ -58,7 +60,7 @@ export const loginUser = async (req: Request, res: Response) => {
     };
 
     const signOptions: jwt.SignOptions = {
-      expiresIn: (process.env.JWT_ACCESS_EXPIRES_IN || '15m') as jwt.SignOptions['expiresIn'],
+      expiresIn: (process.env.JWT_ACCESS_EXPIRES_IN || '7d') as jwt.SignOptions['expiresIn'],
     };
     const accessToken = jwt.sign(tokenPayload, process.env.JWT_ACCESS_SECRET || 'secret', signOptions);
 
@@ -75,5 +77,17 @@ export const loginUser = async (req: Request, res: Response) => {
     });
   } catch (error) {
     return sendError(res, 500, 'Internal Server Error', error);
+  }
+};
+
+export const getCurrentUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return sendError(res, 401, 'Unauthorized');
+    const user = await UserModel.findById(userId).select('-passwordHash');
+    if (!user) return sendError(res, 404, 'User not found');
+    return sendSuccess(res, 200, 'Current user retrieved successfully', user);
+  } catch (error) {
+    return sendError(res, 500, 'In  ternal Server Error', error);
   }
 };

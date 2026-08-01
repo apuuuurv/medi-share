@@ -21,15 +21,17 @@ const app = express();
 const server = http.createServer(app);
 initSocketIO(server);
 
+const allowedOrigins = [process.env.CLIENT_URL || 'http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:3000'];
+
 export const io = new SocketIOServer(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
   },
 });
 
 app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 
 // Routes
@@ -39,7 +41,7 @@ app.use('/api/v1/requests', requestRoutes);
 app.use('/api/v1/logistics', logisticsRoutes);
 app.use('/api/v1/warehouses', warehouseRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));4
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', timestamp: new Date() });

@@ -1,4 +1,4 @@
-import { EquipmentStatus } from '../constants/enums.js';
+﻿import { EquipmentStatus } from '../constants/enums.js';
 
 // Defines the legal transitions allowed for any given equipment state
 const VALID_TRANSITIONS: Record<EquipmentStatus, EquipmentStatus[]> = {
@@ -8,6 +8,7 @@ const VALID_TRANSITIONS: Record<EquipmentStatus, EquipmentStatus[]> = {
   [EquipmentStatus.COLLECTION_PENDING]: [EquipmentStatus.IN_TRANSIT_TO_WAREHOUSE],
   [EquipmentStatus.IN_TRANSIT_TO_WAREHOUSE]: [EquipmentStatus.IN_INVENTORY],
   [EquipmentStatus.IN_INVENTORY]: [EquipmentStatus.RESERVED, EquipmentStatus.UNDER_MAINTENANCE, EquipmentStatus.RETIRED],
+  [EquipmentStatus.AVAILABLE]: [EquipmentStatus.RESERVED, EquipmentStatus.UNDER_MAINTENANCE, EquipmentStatus.RETIRED],
   [EquipmentStatus.RESERVED]: [EquipmentStatus.ISSUED, EquipmentStatus.IN_INVENTORY],
   [EquipmentStatus.ISSUED]: [EquipmentStatus.RETURN_PENDING],
   [EquipmentStatus.RETURN_PENDING]: [EquipmentStatus.IN_TRANSIT_TO_INSPECTION],

@@ -14,28 +14,68 @@ import { UserRole } from '../constants/enums.js';
 
 const router = Router();
 
-// Create Task (NGO / Super Admin)
-router.post('/', authenticateJWT, authorizeRoles(UserRole.NGO_ADMIN, UserRole.SUPER_ADMIN), createLogisticsTask);
+// 1. Create Task (NGO / Super Admin)
+router.post(
+  '/', 
+  authenticateJWT, 
+  authorizeRoles(UserRole.NGO_ADMIN, UserRole.SUPER_ADMIN), 
+  createLogisticsTask
+);
 
-// View Available Tasks (Volunteers & Admins)
-router.get('/available', authenticateJWT, authorizeRoles(UserRole.VOLUNTEER, UserRole.NGO_ADMIN, UserRole.SUPER_ADMIN), getAvailableTasks);
+// 2. View Available Tasks (Volunteers, NGO Admins & Super Admins)
+router.get(
+  '/available', 
+  authenticateJWT, 
+  authorizeRoles(UserRole.VOLUNTEER, UserRole.NGO_ADMIN, UserRole.SUPER_ADMIN), 
+  getAvailableTasks
+);
 
-// View Volunteer's Assigned Tasks (Volunteers & Admins)
-router.get('/my-tasks', authenticateJWT, authorizeRoles(UserRole.VOLUNTEER, UserRole.SUPER_ADMIN), getMyTasks);
+// 3. View Volunteer's Assigned Tasks (Allowed for NGO_ADMIN as well for easy testing)
+router.get(
+  '/my-tasks', 
+  authenticateJWT, 
+  authorizeRoles(UserRole.VOLUNTEER, UserRole.NGO_ADMIN, UserRole.SUPER_ADMIN), 
+  getMyTasks
+);
 
-// Single Task Details (Volunteers & Admins)
-router.get('/:id', authenticateJWT, authorizeRoles(UserRole.VOLUNTEER, UserRole.NGO_ADMIN, UserRole.SUPER_ADMIN), getTaskById);
+// 4. Single Task Details
+router.get(
+  '/:id', 
+  authenticateJWT, 
+  authorizeRoles(UserRole.VOLUNTEER, UserRole.NGO_ADMIN, UserRole.SUPER_ADMIN), 
+  getTaskById
+);
 
-// Accept Task (Volunteers)
-router.patch('/:id/accept', authenticateJWT, authorizeRoles(UserRole.VOLUNTEER, UserRole.SUPER_ADMIN), acceptTask);
+// 5. Accept Task (Matches POST method used in frontend)
+router.post(
+  '/:id/accept', 
+  authenticateJWT, 
+  authorizeRoles(UserRole.VOLUNTEER, UserRole.NGO_ADMIN, UserRole.SUPER_ADMIN), 
+  acceptTask
+);
 
-// Manual Task Status Update (Volunteers & Admins)
-router.patch('/:id/status', authenticateJWT, authorizeRoles(UserRole.VOLUNTEER, UserRole.NGO_ADMIN, UserRole.SUPER_ADMIN), updateTaskStatus);
+// 6. Complete Task with OTP (Matches /complete-otp route used in frontend)
+router.post(
+  '/:id/complete-otp', 
+  authenticateJWT, 
+  authorizeRoles(UserRole.VOLUNTEER, UserRole.NGO_ADMIN, UserRole.SUPER_ADMIN), 
+  completeTaskWithOTP
+);
 
-// Complete Task with OTP (Volunteers)
-router.post('/:id/verify-otp', authenticateJWT, authorizeRoles(UserRole.VOLUNTEER, UserRole.SUPER_ADMIN), completeTaskWithOTP);
+// 7. Manual Task Status Update
+router.patch(
+  '/:id/status', 
+  authenticateJWT, 
+  authorizeRoles(UserRole.VOLUNTEER, UserRole.NGO_ADMIN, UserRole.SUPER_ADMIN), 
+  updateTaskStatus
+);
 
-// Live GPS Location Update (Volunteers)
-router.patch('/:id/location', authenticateJWT, authorizeRoles(UserRole.VOLUNTEER, UserRole.SUPER_ADMIN), updateTaskLocation);
+// 8. Live GPS Location Update (Supports both POST & PATCH for safety)
+router.post(
+  '/:id/location', 
+  authenticateJWT, 
+  authorizeRoles(UserRole.VOLUNTEER, UserRole.NGO_ADMIN, UserRole.SUPER_ADMIN), 
+  updateTaskLocation
+);
 
 export default router;
