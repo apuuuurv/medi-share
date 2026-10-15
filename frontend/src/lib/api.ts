@@ -19,6 +19,11 @@ api.interceptors.request.use(
         token = token.replace(/^"(.*)"$/, '$1');
         config.headers.Authorization = `Bearer ${token}`;
       }
+
+      // Let Axios/browser set the multipart boundary for FormData uploads.
+      if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+        delete config.headers['Content-Type'];
+      }
     }
     return config;
   },

@@ -11,16 +11,53 @@ import { sendSuccess, sendError } from '../utils/responseHandler.js';
 // 1. Submit New Equipment Donation
 export const createEquipment = async (req: AuthRequest, res: Response): Promise<Response> => {
   try {
-    const { name, category, description, condition, donationType, purchaseYear, specifications, location, media } = req.body;
+    const {
+      name,
+      category,
+      description,
+      condition,
+      donationType,
+      purchaseYear,
+      specifications,
+      location,
+      serialNumber,
+    } = req.body;
+
     const donorIdStr = req.user?.userId;
 
     if (!donorIdStr) {
       return sendError(res, 401, 'Unauthorized');
     }
 
+    if (!name || !category || !condition || !description) {
+      return sendError(res, 400, 'Name, category, condition and description are required');
+    }
+
     const donorId = new Types.ObjectId(donorIdStr);
     const uniqueCode = `MED-EQ-${Math.floor(100000 + Math.random() * 900000)}`;
     const qrCodeUrl = await generateQRCodeDataURI(uniqueCode);
+
+    let parsedLocation = location;
+    if (typeof location === 'string') {
+      try {
+        parsedLocation = JSON.parse(location);
+      } catch {
+        parsedLocation = undefined;
+      }
+    }
+
+    const photoUrl = req.file
+      ? `/uploads/equipment/${req.file.filename}`
+      : undefined;
+
+    let parsedSpecifications = specifications || {};
+    if (typeof specifications === 'string') {
+      try {
+        parsedSpecifications = JSON.parse(specifications);
+      } catch {
+        parsedSpecifications = {};
+      }
+    }
 
     const equipment = await EquipmentModel.create({
       assetId: uniqueCode,
@@ -30,15 +67,18 @@ export const createEquipment = async (req: AuthRequest, res: Response): Promise<
       description,
       donorId: donorId as any,
       condition,
-      donationType,
+      donationType: donationType || 'PERMANENT',
       status: EquipmentStatus.DONATION_SUBMITTED,
-      purchaseYear,
-      specifications: specifications || {},
-      location: location || { type: 'Point', coordinates: [72.8777, 19.0760] },
-      media: media || [],
+      purchaseYear: purchaseYear ? Number(purchaseYear) : undefined,
+      serialNumber: serialNumber || undefined,
+      specifications: parsedSpecifications,
+      location: parsedLocation || {
+        type: 'Point',
+        coordinates: [72.8777, 19.0760],
+      },
+      media: photoUrl ? [photoUrl] : [],
     });
 
-    // Record initial history log
     await EquipmentHistoryModel.create({
       equipmentId: equipment._id as any,
       fromStatus: EquipmentStatus.DONATION_SUBMITTED,
@@ -49,7 +89,32 @@ export const createEquipment = async (req: AuthRequest, res: Response): Promise<
 
     return sendSuccess(res, 201, 'Equipment donation submitted successfully', equipment);
   } catch (error) {
+    if (req.file) {
+      try {
+        const fs = await import('fs/promises');
+        const path = await import('path');
+        await fs.unlink(path.resolve(process.cwd(), 'uploads', 'equipment', req.file.filename));
+      } catch {
+        // Ignore cleanup errors.
+      }
+    }
     return sendError(res, 500, 'Failed to submit equipment donation', error);
+  }
+};
+
+// 1A. Fetch Equipment Donated by Current User
+export const getMyDonations = async (req: AuthRequest, res: Response): Promise<Response> => {
+  try {
+    const donorIdStr = req.user?.userId;
+    if (!donorIdStr) return sendError(res, 401, 'Unauthorized');
+
+    const items = await EquipmentModel.find({
+      donorId: new Types.ObjectId(donorIdStr) as any,
+    }).sort({ createdAt: -1 });
+
+    return sendSuccess(res, 200, 'Your donated equipment retrieved successfully', items);
+  } catch (error) {
+    return sendError(res, 500, 'Failed to retrieve your donated equipment', error);
   }
 };
 

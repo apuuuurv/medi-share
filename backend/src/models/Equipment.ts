@@ -7,6 +7,7 @@ export interface IEquipment extends Document {
   name: string;
   category: string; // Wheelchair, Nebulizer, Oxygen Concentrator, etc.
   description: string;
+  serialNumber?: string;
   donorId: Types.ObjectId;
   assignedNGOId?: Types.ObjectId;
   condition: 'NEW' | 'LIKE_NEW' | 'GOOD' | 'FAIR' | 'NEEDS_REPAIR';
@@ -31,6 +32,7 @@ const EquipmentSchema = new Schema<IEquipment>(
     name: { type: String, required: true, trim: true, index: true },
     category: { type: String, required: true, index: true },
     description: { type: String, required: true },
+    serialNumber: { type: String, trim: true, index: true },
     donorId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     assignedNGOId: { type: Schema.Types.ObjectId, ref: 'Organization', index: true },
     condition: { type: String, enum: ['NEW', 'LIKE_NEW', 'GOOD', 'FAIR', 'NEEDS_REPAIR'], required: true },
