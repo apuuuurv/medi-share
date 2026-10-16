@@ -12,6 +12,10 @@ import {
   LogOut,
   CheckCircle2,
   PackageCheck,
+  Upload,
+  ScanText,
+  Loader2,
+  Activity,
 } from 'lucide-react';
 
 export default function BeneficiaryRequestPage() {
@@ -22,11 +26,25 @@ export default function BeneficiaryRequestPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const [analyzingReport, setAnalyzingReport] = useState(false);
+  const [ocrResult, setOcrResult] = useState<any>(null);
+
+  // Automatically hide success message after 5 seconds
+useEffect(() => {
+  if (!success) return;
+
+  const timer = setTimeout(() => {
+    setSuccess('');
+  }, 5000);
+
+  return () => clearTimeout(timer);
+}, [success]);
 
   // Form state
   const [formData, setFormData] = useState({
     equipmentCategory: 'OXYGEN_CONCENTRATOR',
-    urgencyLevel: 'CRITICAL',
+    
     diagnosis: '',
     doctorName: '',
     hospitalName: '',
@@ -76,21 +94,97 @@ export default function BeneficiaryRequestPage() {
     }
   };
 
+ 
+const handleAnalyzeReport = async () => {
+  if (!reportFile) {
+    setError('Please select a medical report image first.');
+    return;
+  }
+
+  setAnalyzingReport(true);
+  setError('');
+  setSuccess('');
+  setOcrResult(null);
+
+  try {
+    const data = new FormData();
+    data.append('report', reportFile);
+
+    const response = await api.post('/ocr/analyze-report', data);
+    const result = response.data.data;
+
+    setOcrResult(result);
+
+    const classification = result.documentClassification;
+
+    const isPrescriptionVerified =
+      classification?.predicted_category?.toLowerCase() === 'prescription' &&
+      classification?.accepted_for_classification === true;
+
+    if (!isPrescriptionVerified) {
+      setError(
+        'Invalid document. Please upload an accepted medical prescription.'
+      );
+      return;
+    }
+
+    const extracted = result.extractedData || {};
+
+    setFormData((prev) => ({
+      ...prev,
+      spO2Level: extracted.spo2?.toString() || prev.spO2Level,
+      diagnosis:
+        [
+          extracted.conditions?.join(', '),
+          extracted.keywords?.join(', '),
+        ]
+          .filter(Boolean)
+          .join(' | ') || prev.diagnosis,
+    }));
+
+    setSuccess('Prescription verified successfully.');
+  } catch (err: any) {
+    setError(
+      err.response?.data?.message ||
+        'OCR analysis failed. Please try a clearer image.'
+    );
+  } finally {
+    setAnalyzingReport(false);
+  }
+};
+
   const handleSubmitRequest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError('');
-    setSuccess('');
+  e.preventDefault();
+
+setError('');
+setSuccess('');
+
+const classification = ocrResult?.documentClassification;
+
+const isPrescriptionVerified =
+  classification?.predicted_category?.toLowerCase() === 'prescription' &&
+  classification?.accepted_for_classification === true;
+
+if (!isPrescriptionVerified) {
+  setError(
+    'Submission blocked. Please upload and verify an accepted medical prescription first.'
+  );
+  return;
+}
+
+setSubmitting(true);
 
     try {
       // ✅ Payload with fallback defaults to satisfy backend Mongoose validation
       const payload = {
         equipmentCategory: formData.equipmentCategory,
-        urgencyLevel: formData.urgencyLevel,
+     
         diagnosis: formData.diagnosis || 'General Emergency Request',
         doctorName: formData.doctorName || 'Dr. On-Call / Emergency',
         hospitalName: formData.hospitalName || 'Local Medical Center / Self',
         spO2Level: formData.spO2Level ? Number(formData.spO2Level) : undefined,
+        prescriptionUrl: ocrResult?.reportUrl || undefined,
+        medicalIndicators: ocrResult?.extractedData || {},
         deliveryAddress: {
           street: formData.deliveryAddress.street || 'Standard Emergency Delivery Street',
           city: formData.deliveryAddress.city || 'Mumbai',
@@ -107,14 +201,31 @@ export default function BeneficiaryRequestPage() {
       setSuccess('Emergency request submitted successfully! Urgency engine is evaluating priority.');
 
       // Reset form & refresh list
-      setFormData((prev) => ({ 
-        ...prev, 
-        diagnosis: '', 
-        doctorName: '', 
-        hospitalName: '', 
-        spO2Level: '' 
-      }));
-      fetchMyRequests();
+      // Reset the complete form after successful submission
+setFormData((prev) => ({
+  ...prev,
+  equipmentCategory: 'OXYGEN_CONCENTRATOR',
+  diagnosis: '',
+  doctorName: '',
+  hospitalName: '',
+  spO2Level: '',
+  deliveryAddress: {
+    street: '',
+    city: '',
+    state: '',
+    zipCode: '',
+  },
+}));
+
+// Clear uploaded report and OCR results
+setReportFile(null);
+setOcrResult(null);
+
+// Clear any previous error message
+setError('');
+
+// Refresh request history
+fetchMyRequests();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to submit equipment request');
     } finally {
@@ -193,7 +304,7 @@ export default function BeneficiaryRequestPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div>
+              {/* <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
                   Urgency Level
                 </label>
@@ -207,20 +318,75 @@ export default function BeneficiaryRequestPage() {
                   <option value="MEDIUM">Medium Priority</option>
                   <option value="LOW">Low / Routine</option>
                 </select>
-              </div>
+              </div> */}
+              <div className="rounded-xl border border-teal-500/30 bg-teal-500/5 p-4">
+  <div className="flex items-center gap-2">
+    <Activity className="h-5 w-5 text-teal-400" />
+    <p className="text-sm font-bold text-teal-300">
+      Automatic Priority Assessment
+    </p>
+  </div>
+
+  <p className="mt-1 text-xs text-slate-400">
+    Priority will be calculated automatically from the uploaded
+    medical document and extracted medical indicators.
+  </p>
+
+  <p className="mt-2 text-xs text-amber-300">
+    Final priority is subject to medical and NGO review.
+  </p>
+</div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                  SpO2 Level (%)
-                </label>
-                <input
-                  type="number"
-                  placeholder="e.g. 88"
-                  value={formData.spO2Level}
-                  onChange={(e) => setFormData({ ...formData, spO2Level: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-teal-500"
-                />
+               
               </div>
+            </div>
+
+            <div className="rounded-xl border border-dashed border-teal-500/40 bg-teal-500/5 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <ScanText className="w-5 h-5 text-teal-400" />
+                <div><p className="text-sm font-bold">Medical Report OCR</p><p className="text-[11px] text-slate-400">Upload report → extract vitals & medical indicators</p></div>
+              </div>
+              <input type="file" accept="image/png,image/jpeg,image/jpg" onChange={(e) => { setReportFile(e.target.files?.[0] || null); setOcrResult(null); }} className="hidden" id="medical-report" />
+              <label htmlFor="medical-report" className="flex cursor-pointer items-center justify-between rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-xs text-slate-300 hover:border-teal-500/60">
+                <span className="truncate">{reportFile ? reportFile.name : 'Choose JPG / PNG medical report'}</span><Upload className="w-4 h-4 text-teal-400 shrink-0" />
+              </label>
+              <button type="button" disabled={!reportFile || analyzingReport} onClick={handleAnalyzeReport} className="mt-3 w-full rounded-lg border border-teal-500/30 bg-teal-500/10 py-2 text-xs font-bold text-teal-300 hover:bg-teal-500/20 disabled:opacity-40 flex justify-center items-center gap-2">
+                {analyzingReport ? <><Loader2 className="w-4 h-4 animate-spin" /> Reading medical report...</> : <><ScanText className="w-4 h-4" /> Analyze Report with OCR</>}
+              </button>
+            
+
+{ocrResult && (
+  <div className="mt-3 rounded-xl border border-teal-500/20 bg-slate-900 p-4">
+    <div className="flex items-center gap-2 font-bold text-teal-300">
+      <Activity className="h-5 w-5" />
+      Document Verification
+    </div>
+
+    {ocrResult.documentClassification?.available === false ? (
+      <p className="mt-3 text-amber-300">
+        Document classifier unavailable. Please try again.
+      </p>
+    ) : ocrResult.documentClassification?.predicted_category
+        ?.toLowerCase() === "prescription" &&
+      ocrResult.documentClassification?.accepted_for_classification === true ? (
+      <div className="mt-3 text-emerald-400">
+        <p className="font-semibold">✓ Prescription detected</p>
+        <p className="mt-1 text-sm text-slate-300">
+          You can proceed with your request.
+        </p>
+      </div>
+    ) : (
+      <div className="mt-3 text-red-400">
+        <p className="font-semibold">✕ Invalid document</p>
+        <p className="mt-1 text-sm text-slate-300">
+          Please upload a valid medical prescription to continue.
+        </p>
+      </div>
+    )}
+  </div>
+)}
+
             </div>
 
             <div>
@@ -256,14 +422,23 @@ export default function BeneficiaryRequestPage() {
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-teal-500/20 disabled:opacity-50 flex items-center justify-center gap-2 text-sm mt-2"
-            >
-              <Send className="w-4 h-4" />
-              {submitting ? 'Submitting...' : 'Submit Emergency Request'}
-            </button>
+           
+<button
+  type="submit"
+  disabled={
+    submitting ||
+    !(
+      ocrResult?.documentClassification?.predicted_category?.toLowerCase() ===
+        'prescription' &&
+      ocrResult?.documentClassification?.accepted_for_classification === true
+    )
+  }
+  className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-teal-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm mt-2"
+>
+  <Send className="w-4 h-4" />
+  {submitting ? 'Submitting...' : 'Submit Emergency Request'}
+</button>
+
           </form>
         </div>
 

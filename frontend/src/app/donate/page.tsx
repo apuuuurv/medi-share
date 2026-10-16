@@ -12,6 +12,8 @@ import {
   AlertCircle,
   X,
   Plus,
+  Camera,
+  ImagePlus,
 } from 'lucide-react';
 
 export default function DonorDashboard() {
@@ -23,6 +25,8 @@ export default function DonorDashboard() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState('');
 
   // Status Alerts
   const [error, setError] = useState('');
@@ -74,6 +78,32 @@ export default function DonorDashboard() {
     }
   };
 
+  const handlePhotoChange = (file?: File) => {
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Photo must be 5 MB or smaller.');
+      return;
+    }
+
+    setError('');
+    setPhoto(file);
+
+    const reader = new FileReader();
+    reader.onloadend = () => setPhotoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const clearPhoto = () => {
+    setPhoto(null);
+    setPhotoPreview('');
+  };
+
   // Submit new equipment donation
   const handleSubmitDonation = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,22 +112,28 @@ export default function DonorDashboard() {
     setSuccess('');
 
     try {
-      const payload = {
-        name: formData.name,
-        category: formData.category,
-        condition: formData.condition,
-        serialNumber: formData.serialNumber,
-        description: formData.description,
-        donationType: 'PERMANENT',
-        location: {
+      const payload = new FormData();
+      payload.append('name', formData.name);
+      payload.append('category', formData.category);
+      payload.append('condition', formData.condition);
+      payload.append('serialNumber', formData.serialNumber);
+      payload.append('description', formData.description);
+      payload.append('donationType', 'PERMANENT');
+      payload.append(
+        'location',
+        JSON.stringify({
           type: 'Point',
           coordinates: [72.8777, 19.0760],
           street: formData.street || 'Donor Premises',
           city: formData.city,
           state: formData.state,
           zipCode: formData.zipCode,
-        },
-      };
+        })
+      );
+
+      if (photo) {
+        payload.append('photo', photo);
+      }
 
       await api.post('/equipment', payload);
 
@@ -238,6 +274,20 @@ export default function DonorDashboard() {
                       </span>
                     </div>
 
+                    {item.media?.[0] && (
+                      <div className="rounded-xl overflow-hidden border border-slate-800 bg-slate-900">
+                       <img
+  src={
+    item.media[0].startsWith('http')
+      ? item.media[0]
+      : `http://localhost:5000${item.media[0]}`
+  }
+  alt={item.name}
+  className="w-full h-44 object-cover"
+/>
+                      </div>
+                    )}
+
                     <div>
                       <h3 className="font-bold text-white text-base">{item.name}</h3>
                       <p className="text-xs text-slate-400">Asset Tag: {item.assetId || 'MED-EQ-AUTO'}</p>
@@ -345,6 +395,70 @@ export default function DonorDashboard() {
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-teal-500"
                   />
                 </div>
+              </div>
+
+              {/* Equipment Photo */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">
+                  Equipment Photo
+                </label>
+
+                {photoPreview ? (
+                  <div className="relative rounded-xl overflow-hidden border border-teal-500/30 bg-slate-950">
+                    <img
+                      src={photoPreview}
+                      alt="Equipment preview"
+                      className="w-full h-48 object-cover"
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 p-2 bg-slate-950/80 flex gap-2">
+                      <label className="flex-1 cursor-pointer text-center py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-semibold text-white">
+                        Retake / Change
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={(e) => handlePhotoChange(e.target.files?.[0])}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={clearPhoto}
+                        className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-semibold"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="cursor-pointer flex items-center justify-center gap-2 py-4 bg-slate-950 border border-dashed border-slate-700 hover:border-teal-500/50 rounded-xl text-xs font-semibold text-slate-300 transition-colors">
+                      <Camera className="w-4 h-4 text-teal-400" />
+                      Take Photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={(e) => handlePhotoChange(e.target.files?.[0])}
+                      />
+                    </label>
+
+                    <label className="cursor-pointer flex items-center justify-center gap-2 py-4 bg-slate-950 border border-dashed border-slate-700 hover:border-teal-500/50 rounded-xl text-xs font-semibold text-slate-300 transition-colors">
+                      <ImagePlus className="w-4 h-4 text-teal-400" />
+                      Upload Photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handlePhotoChange(e.target.files?.[0])}
+                      />
+                    </label>
+                  </div>
+                )}
+                <p className="text-[10px] text-slate-500 mt-1.5">
+                  Optional • JPG, PNG, WEBP • Maximum 5 MB
+                </p>
               </div>
 
               <div>

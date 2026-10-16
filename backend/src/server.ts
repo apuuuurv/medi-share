@@ -12,7 +12,9 @@ import logisticsRoutes from './routes/logisticsRoutes.js';
 import { initSocketIO } from './services/socketService.js';
 import warehouseRoutes from './routes/warehouseRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import ocrRoutes from './routes/ocrRoutes.js';
 import swaggerUi from 'swagger-ui-express';
+import path from 'path';
 import { swaggerSpec } from './config/swagger.js';
 
 dotenv.config();
@@ -30,9 +32,16 @@ export const io = new SocketIOServer(server, {
   },
 });
 
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: {
+      policy: 'cross-origin',
+    },
+  })
+);
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
+app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
 
 // Routes
 app.use('/api/v1/auth', authRoutes);
@@ -41,6 +50,7 @@ app.use('/api/v1/requests', requestRoutes);
 app.use('/api/v1/logistics', logisticsRoutes);
 app.use('/api/v1/warehouses', warehouseRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/v1/ocr', ocrRoutes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.get('/health', (req, res) => {
